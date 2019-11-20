@@ -1,0 +1,21 @@
+{
+  "name": "Mediaflare",
+  "version": "1.35",
+  "author": "Dylan",
+  "manifest_version": 2,
+  "homepage_url": "https://www.youtube.com/watch?v=8GBgVrMk3vE",
+  "description": "The Mediaflare Chrome Extension allows users to view obfuscated media on YouTube as if any other video.",
+  "icons": {
+    "16": "images/1.png",
+    "32": "images/2.png",
+    "128": "images/3.png"
+  },
+  "content_scripts":
+  [
+    {
+      "matches": ["https://www.youtube.com/watch*"],
+      "js": ["resources/jq.js","code/flare.js"]
+    }
+  ],
+  "web_accessible_resources":["resources/*"]
+}

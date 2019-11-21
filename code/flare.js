@@ -13,7 +13,6 @@ String.prototype.toHHMMSS = function () {
 			dataS = hours+':'+minutes+':'+seconds;
 		}
 		if(dataS[0] == 0) {
-			console.log("Converted "+dataS+" to "+dataS.substr(1));
 			return dataS.substr(1);
 		} else {
 			return dataS;
@@ -30,12 +29,16 @@ function timeToSeconds(data) {
 	return seconds;
 }
 
-function removeElement(elementId) {
+function removeElement(elementId, outer=false) {
 	// Removes an element from the document
 	try {
-		var element = document.getElementById(elementId);
-		element.parentNode.removeChild(element);
+    if (outer) {
+      document.getElementById(elementId).outerHTML = "";
+    } else {
+      document.getElementById(elementId).innerHTML = "";
+    }
 	} catch(e) {
+    console.log(e);
 		console.log("Failed to remove element.");
 	}
 }
@@ -103,6 +106,7 @@ function ready() {
 		}
 		try {
 			video.pause();
+      console.log("VIDEO PAUSED.")
 			document.getElementsByClassName("ytp-settings-button")[0].click();
 			document.getElementsByClassName("ytp-settings-button")[0].click();
 			document.getElementsByClassName("ytp-menuitem-label")[document.getElementsByClassName("ytp-menuitem-label").length - 1].click();
@@ -138,7 +142,7 @@ function ready() {
 							var dSec = Math.floor(timeToSeconds(durr)/rate);
 							document.getElementById('faketime').innerHTML = '<span class="fake-time-current">'+cSec.toString().toHHMMSS()+'</span><span class="fake-time-separator"> / </span><span class="fake-time-duration">'+dSec.toString().toHHMMSS()+'</span>';
 						}
-					}, 600);
+					}, 700);
 				}
 				video.play();
 			}, 10);
@@ -158,164 +162,191 @@ function ready() {
 		console.log(e);
 		throw new Error("Failed to read metadata in description.");
 	}
+  function waitForAd() {
+    setTimeout(function() {
+  		try {
+        /// null and ad
+        try {
+          var tt = document.getElementsByClassName("title style-scope ytd-video-primary-info-renderer")[0].innerText.trim();
+          var adTitle = document.getElementsByClassName('ytp-title-link yt-uix-sessionlink ytp-title-fullerscreen-link')[0].innerText.trim();
+          if (tt == adTitle && tt != title.trim()) {
+          	console.log("There is an ad, "+tt+" != "+ title + " || "+tt+" != "+adTitle+" ("+(video.duration == null || video.duration < 1));
+            return waitForAd();
+          } else {
+          	console.log("There are no ads "+tt+" == "+ adTitle + " || "+title);
+          }
+        } catch(e) {
+          console.log(e);
+          console.log("Error determining ads.")
+          return waitForAd();
+        }
+  			var duration = Math.floor(video.duration);
+  			var cw = video.videoWidth;
+  			var ch = video.videoHeight;
+  			if (cw == undefined || ch == undefined || cw < 90 || ch < 90) { console.log("ERROR: Video height needs retry?"); return false; }
+  			video.parentElement.style = "visibility: hidden;";
 
-	setTimeout(function() {
-		try {
-			var duration = Math.floor(video.duration);
-			var cw = video.videoWidth;
-			var ch = video.videoHeight;
-			if (cw == undefined || ch == undefined || cw < 90 || ch < 90) { console.log("ERROR: Video height needs retry?"); return false; }
-			video.parentElement.style = "visibility: hidden;";
+  			if (filters) {
+  				filter = {
+  					'class': 'view',
+  					'height': '100%',
+  					'width': '100%',
+  					'style': 'outline-style:none; user-select: none; filter: invert(100%) hue-rotate(-90deg); transform: scale(-1);'
+  				};
+  			} else {
+  				filter = {
+  					'class': 'view',
+  					'height': '100%',
+  					'width': '100%',
+  					'style': 'outline-style:none; user-select: none;'
+  				};
+  			}
+  			video.parentElement.parentElement.appendChild(createElement('center', 'centered', {'style': 'outline-style:none; user-select: none;'}));
+  			document.getElementById('centered').appendChild(createElement('canvas', 'ctx', filter));
+  			video.parentElement.parentElement.appendChild(createElement('canvas', 'canvas', {
+  				'style': 'visibility: hidden;'
+  			}));
 
-			if (filters) {
-				filter = {
-					'class': 'view',
-					'height': '100%',
-					'width': '100%',
-					'style': 'outline-style:none; user-select: none; filter: invert(100%) hue-rotate(-90deg); transform: scale(-1);'
-				};
-			} else {
-				filter = {
-					'class': 'view',
-					'height': '100%',
-					'width': '100%',
-					'style': 'outline-style:none; user-select: none;'
-				};
-			}
-			video.parentElement.parentElement.appendChild(createElement('center', 'centered', {'style': 'outline-style:none; user-select: none;'}));
-			document.getElementById('centered').appendChild(createElement('canvas', 'ctx', filter));
-			video.parentElement.parentElement.appendChild(createElement('canvas', 'canvas', {
-				'style': 'visibility: hidden;'
-			}));
+  			var canvas = document.getElementById('canvas');
+  			var canvas2 = document.getElementById('ctx');
+  			var context = canvas.getContext('2d', {
+  				alpha: false
+  			});
+  			var ctx = canvas2.getContext('2d', {
+  				alpha: false
+  			});
+  			var lastTime = -1;
+  			var lastHeight = -1;
 
-			var canvas = document.getElementById('canvas');
-			var canvas2 = document.getElementById('ctx');
-			var context = canvas.getContext('2d', {
-				alpha: false
-			});
-			var ctx = canvas2.getContext('2d', {
-				alpha: false
-			});
-			var lastTime = -1;
-			var lastHeight = -1;
+  			canvas2.width = cw;
+  			canvas2.height = ch;
+  			canvas.width = cw;
+  			canvas.height = ch;
+  		} catch (e) {
+  			console.log(e);
+        //Cannot read property 'duration' of null
 
-			canvas2.width = cw;
-			canvas2.height = ch;
-			canvas.width = cw;
-			canvas.height = ch;
-		} catch (e) {
-			console.log(e);
-			throw new Error("Not a compatiable website.");
-		}
-
-
-		if (keys.indexOf(keys.length) != -1) {
-			var nkeys = [];
-			keys.forEach(function(element) {
-				nkeys.push(element - 1);
-			});
-			keys = nkeys;
-		}
-		var rclen = Math.sqrt(keys.length);
-		var items = listToMatrix(keys, rclen)
-		tileWidth = cw / rclen;
-		tileHeight = ch / rclen;
-
-		klist = [];
-		var row;
-		var col;
-		for (row = 0; row < rclen; row++) {
-			for (col = 0; col < rclen; col++) {
-				klist.push([col, row]);
-			}
-		}
-
-		function draw() {
-			if (video.currentTime !== lastTime) {
-				var vidHeight = video.style.height;
-				if (vidHeight < 90 || lastHeight != vidHeight) {
-					lastHeight = vidHeight;
-					canvas2.style.height = lastHeight;
-					canvas2.style['margin-top'] = video.style.top;
-				}
-				context.drawImage(video, 0, 0, cw, ch, 0, 0, cw, ch);
-				var row;
-				var col;
-				var current = 0;
-				for (row = 0; row < rclen; row++) {
-					for (col = 0; col < rclen; col++) {
-						try {
-							var kdata = klist[keys[current]];
-							ctx.drawImage(canvas, tileWidth * col, tileHeight * row, tileWidth, tileHeight, tileWidth * kdata[0], tileHeight * kdata[1], tileWidth, tileHeight);         // draw canvas A
-							current++;
-							lastTime = video.currentTime;
-						} catch (e) {
-							console.log(e);
-							return;
-						}
-					}
-				}
-			}
-			requestAnimationFrame(draw);
-		};
-		draw();
+  			throw new Error("Not a compatiable website.");
+  		}
 
 
-		setInterval(function() {
-			if (!video.paused && video.videoWidth > 90 && video.videoHeight > 90 && engineRunning) {
-				cw = video.videoWidth;
-				ch = video.videoHeight;
-				tileWidth = cw / rclen;
-				tileHeight = ch / rclen;
-				canvas2.width = cw;
-				canvas2.height = ch;
-				canvas.width = cw;
-				canvas.height = ch;
-				if (duration != undefined && Math.floor(video.duration) != duration) {
-					try {
-						removeElement('canvas');
-						removeElement('ctx');
-					} catch(e) {
-						console.log(e);
-						console.log("Failed to REMOVE canvas DOM.");
-					}
-					video.parentElement.style = "visibility: visible;";
-					// Reset params
-					video.playbackRate = 1;
-					document.getElementById('descriptionend').innerHTML = ""; // clear description
-					setInterval(function() {
-						try {
-							titleElm.innerText = document.getElementsByClassName('ytp-title-link yt-uix-sessionlink ytp-title-fullerscreen-link')[0].innerText;
-						} catch (e) {
-							console.log(e);
-						}
-					}, 1100);
-					engineRunning = false;
-					throw new Error("The video appears to have changed. " + duration + " vs " + video.duration);
-				}
-			} else {
-				if (lastHeight != video.style.height) {
-					lastHeight = video.style.height;
-					canvas2.style.height = lastHeight;
-					canvas2.style['margin-top'] = video.style.top;
-				}
-			}
-		}, 1600);
+  		if (keys.indexOf(keys.length) != -1) {
+  			var nkeys = [];
+  			keys.forEach(function(element) {
+  				nkeys.push(element - 1);
+  			});
+  			keys = nkeys;
+  		}
+  		var rclen = Math.sqrt(keys.length);
+  		var items = listToMatrix(keys, rclen)
+  		tileWidth = cw / rclen;
+  		tileHeight = ch / rclen;
 
-		var container = video.parentElement.parentElement.parentElement;
-		container.onclick = function() {
-			var noRedirect = '.view';
-			if (event.target.matches(noRedirect) || event.target.id == "centered") {
-				if (!video.paused) {
-					video.pause();
-				} else {
-					video.play();
-				}
-			} else {
-				console.log(event.target)
-			}
-		}
-	}, 480);
+  		klist = [];
+  		var row;
+  		var col;
+  		for (row = 0; row < rclen; row++) {
+  			for (col = 0; col < rclen; col++) {
+  				klist.push([col, row]);
+  			}
+  		}
+
+  		function draw() {
+  			if (video.currentTime !== lastTime) {
+  				var vidHeight = video.style.height;
+  				if (vidHeight < 90 || lastHeight != vidHeight) {
+  					lastHeight = vidHeight;
+  					canvas2.style.height = lastHeight;
+  					canvas2.style['margin-top'] = video.style.top;
+  				}
+  				context.drawImage(video, 0, 0, cw, ch, 0, 0, cw, ch);
+  				var row;
+  				var col;
+  				var current = 0;
+  				for (row = 0; row < rclen; row++) {
+  					for (col = 0; col < rclen; col++) {
+  						try {
+  							var kdata = klist[keys[current]];
+  							ctx.drawImage(canvas, tileWidth * col, tileHeight * row, tileWidth, tileHeight, tileWidth * kdata[0], tileHeight * kdata[1], tileWidth, tileHeight);         // draw canvas A
+  							current++;
+  							lastTime = video.currentTime;
+  						} catch (e) {
+  							console.log(e);
+  							return;
+  						}
+  					}
+  				}
+  			}
+  			requestAnimationFrame(draw);
+  		};
+  		draw();
+
+
+  		setInterval(function() {
+  			if (!video.paused && video.videoWidth > 90 && video.videoHeight > 90 && engineRunning) {
+  				cw = video.videoWidth;
+  				ch = video.videoHeight;
+  				tileWidth = cw / rclen;
+  				tileHeight = ch / rclen;
+  				canvas2.width = cw;
+  				canvas2.height = ch;
+  				canvas.width = cw;
+  				canvas.height = ch;
+  				if (duration != undefined && Math.floor(video.duration) != duration) {
+  					try {
+              title = "None";
+  						removeElement('canvas', true);
+  						removeElement('ctx', true);
+              removeElement('centered', true);
+              removeElement('faketime', true);
+              document.getElementsByClassName("ytp-time-display notranslate")[0].style = "";
+              document.getElementsByClassName('dropdown-trigger style-scope ytd-menu-renderer')[0].style = "";
+  					} catch(e) {
+  						console.log(e);
+  						console.log("Failed to REMOVE canvas DOM.");
+  					}
+  					video.parentElement.style = "visibility: visible;";
+  					// Reset params
+  					video.playbackRate = 1;
+  					document.getElementById('descriptionend').innerHTML = ""; // clear description
+  					setInterval(function() {
+  						try {
+  							titleElm.innerText = document.getElementsByClassName('ytp-title-link yt-uix-sessionlink ytp-title-fullerscreen-link')[0].innerText;
+  						} catch (e) {
+  							console.log(e);
+  						}
+  					}, 1100);
+  					engineRunning = false;
+            video.playbackRate = 1;
+  					throw new Error("The video appears to have changed. " + duration + " vs " + Math.floor(video.duration));
+  				}
+  			} else {
+  				if (lastHeight != video.style.height) {
+  					lastHeight = video.style.height;
+  					canvas2.style.height = lastHeight;
+            if(parseInt(video.style.top.split("px")[0]) <= 0) {
+  					canvas2.style['margin-top'] = 0;
+            } else {
+  					canvas2.style['margin-top'] = video.style.top;
+            }
+  				}
+  			}
+  		}, 1600);
+
+  		var container = video.parentElement.parentElement.parentElement;
+  		container.onclick = function() {
+  			var noRedirect = '.view';
+  			if (event.target.matches(noRedirect) || event.target.id == "centered") {
+  				if (!video.paused) {
+  					video.pause();
+  				} else {
+  					video.play();
+  				}
+  			}
+  		}
+  	}, 480);
+  }
+  waitForAd();
 	return true;
 }
 
@@ -334,7 +365,7 @@ $(document).ready(function() {
 					console.log("Succeeded second time!");
 					try { document.getElementsByClassName('dropdown-trigger style-scope ytd-menu-renderer')[0].style = "display: none;"; } catch (e) {};
 				}
-			}, 1100);
+			}, 1420);
 		} else {
 			console.log("Successfully executed ready() command!");
 			try { document.getElementsByClassName('dropdown-trigger style-scope ytd-menu-renderer')[0].style = "display: none;"; } catch (e) {};
@@ -350,7 +381,6 @@ function get_url(quality) {
 		var new2 = new1[0].replace(/ytplayer/g, 'vtplayer');
 		try {
 			eval(new2);
-			console.log(vtplayer);
 		} catch (e) {
 			console.log(e);
 		}
@@ -371,7 +401,6 @@ function get_url(quality) {
 		var url = videoUrls[quality]["url"];
 		var audioType = Object.keys(videoUrls)[Object.keys(videoUrls).length - 1];
 		var audio = videoUrls[audioType]["url"];
-		console.log([url, videoUrls[quality]["type"], audio, audioType])
 		return [url, videoUrls[quality]["type"], audio, audioType];
 	} catch(e) {
 		console.log(e);

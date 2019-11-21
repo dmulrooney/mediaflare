@@ -1,3 +1,35 @@
+String.prototype.toHHMMSS = function () {
+    var sec_num = parseInt(this, 10); // don't forget the second param
+    var hours   = Math.floor(sec_num / 3600);
+    var minutes = Math.floor((sec_num - (hours * 3600)) / 60);
+    var seconds = sec_num - (hours * 3600) - (minutes * 60);
+		var dataS;
+    if (hours   < 10) {hours   = "0"+hours;}
+    if (minutes < 10) {minutes = "0"+minutes;}
+    if (seconds < 10) {seconds = "0"+seconds;}
+		if (hours == "00") {
+	    dataS = minutes+':'+seconds;
+		} else {
+			dataS = hours+':'+minutes+':'+seconds;
+		}
+		if(dataS[0] == 0) {
+			console.log("Converted "+dataS+" to "+dataS.substr(1));
+			return dataS.substr(1);
+		} else {
+			return dataS;
+		}
+}
+
+function timeToSeconds(data) {
+	var a = data.split(':'); // split it at the colons
+	if (a.length == 2) {
+		data = "00:"+data;
+		a = data.split(':');
+	}
+	var seconds = (+a[0]) * 60 * 60 + (+a[1]) * 60 + (+a[2]);
+	return seconds;
+}
+
 function removeElement(elementId) {
 	// Removes an element from the document
 	try {
@@ -89,17 +121,38 @@ function ready() {
 
 			setTimeout(function() {
 				video.playbackRate = rate;
+				if(rate != 1) {
+					//fake-time-current
+					document.getElementsByClassName("ytp-time-display notranslate")[0].parentElement.appendChild(createElement('div', 'faketime', {'class': 'ytp-time-display notranslate'}));
+					var current = document.getElementsByClassName("ytp-time-display notranslate")[0].getElementsByClassName('ytp-time-current')[0].innerText;
+					var durr = document.getElementsByClassName("ytp-time-display notranslate")[0].getElementsByClassName('ytp-time-duration')[0].innerText;
+					var cSec = Math.floor(timeToSeconds(current)/rate);
+					var dSec = Math.floor(timeToSeconds(durr)/rate);
+					document.getElementsByClassName("ytp-time-display notranslate")[0].style = "display: none;";
+					document.getElementById('faketime').innerHTML = '<span class="fake-time-current">'+cSec.toString().toHHMMSS()+'</span><span class="fake-time-separator"> / </span><span class="fake-time-duration">'+dSec.toString().toHHMMSS()+'</span>';
+					setInterval(function() {
+						if (engineRunning) {
+							var current = document.getElementsByClassName("ytp-time-display notranslate")[0].getElementsByClassName('ytp-time-current')[0].innerText;
+							var durr = document.getElementsByClassName("ytp-time-display notranslate")[0].getElementsByClassName('ytp-time-duration')[0].innerText;
+							var cSec = Math.floor(timeToSeconds(current)/rate);
+							var dSec = Math.floor(timeToSeconds(durr)/rate);
+							document.getElementById('faketime').innerHTML = '<span class="fake-time-current">'+cSec.toString().toHHMMSS()+'</span><span class="fake-time-separator"> / </span><span class="fake-time-duration">'+dSec.toString().toHHMMSS()+'</span>';
+						}
+					}, 600);
+				}
 				video.play();
 			}, 10);
 		} catch (e) {
 			console.log(e);
 		}
-		ud = get_url(maxQuality)
+		ud = get_url(maxQuality);
 		document.getElementsByClassName("content style-scope ytd-video-secondary-info-renderer")[0].innerHTML = "";
 		document.getElementsByClassName("content style-scope ytd-video-secondary-info-renderer")[0].appendChild(createElement('p', 'descriptionend'));
 		desc += "<p>--------------------------------------------<p><p> Can you help mediaflare?</p><p>--------------------------------------------<p></br></p>Please reupload this video and help others access this content for free:</p>"
-		desc += "<center></br><p><a href=\"" + ud[0] + "\" download='" + title.replace(/ /g, "_") + "_video.mp4' target=\"_blank\" type='" + ud[1] + "'>Click here to download the video</a></p>";
-		desc += "<p><a href=\"" + ud[2] + "\" download='" + title.replace(/ /g, "_") + "_audio.webm' target=\"_blank\" type='" + ud[3] + "'>Click here to download the audio</a></p></center></br>";
+		if (ud != false) {
+			desc += "<center></br><p><a href=\"" + ud[0] + "\" download='" + title.replace(/ /g, "_") + "_video.mp4' target=\"_blank\" type='" + ud[1] + "'>Click here to download the video</a></p>";
+			desc += "<p><a href=\"" + ud[2] + "\" download='" + title.replace(/ /g, "_") + "_audio.webm' target=\"_blank\" type='" + ud[3] + "'>Click here to download the audio</a></p></center></br>";
+		}
 		document.getElementById('descriptionend').innerHTML = desc;
 	} catch (e) {
 		console.log(e);
@@ -192,8 +245,6 @@ function ready() {
 				for (row = 0; row < rclen; row++) {
 					for (col = 0; col < rclen; col++) {
 						try {
-							//var imageData = context.getImageData(tileWidth * col, tileHeight * row, tileWidth, tileHeight);
-							//ctx.putImageData(imageData, tileWidth * klist[keys[current]][0], tileHeight * klist[keys[current]][1]);
 							var kdata = klist[keys[current]];
 							ctx.drawImage(canvas, tileWidth * col, tileHeight * row, tileWidth, tileHeight, tileWidth * kdata[0], tileHeight * kdata[1], tileWidth, tileHeight);         // draw canvas A
 							current++;
@@ -238,7 +289,7 @@ function ready() {
 						} catch (e) {
 							console.log(e);
 						}
-					}, 1080);
+					}, 1100);
 					engineRunning = false;
 					throw new Error("The video appears to have changed. " + duration + " vs " + video.duration);
 				}
@@ -267,14 +318,10 @@ function ready() {
 	}, 480);
 	return true;
 }
+
 var engineRunning = true;
 var video = document.querySelector('video');
 $(document).ready(function() {
-	setTimeout(function() {
-		try {
-			document.getElementsByClassName('dropdown-trigger style-scope ytd-menu-renderer')[0].style = "display: none;";
-		} catch (e) {}
-	}, 100);
 	setTimeout(function() {
 		var success = ready();
 		if (!success) {
@@ -285,42 +332,50 @@ $(document).ready(function() {
 					console.log("Failed twice! Giving up.");
 				} else {
 					console.log("Succeeded second time!");
+					try { document.getElementsByClassName('dropdown-trigger style-scope ytd-menu-renderer')[0].style = "display: none;"; } catch (e) {};
 				}
 			}, 1100);
 		} else {
 			console.log("Successfully executed ready() command!");
+			try { document.getElementsByClassName('dropdown-trigger style-scope ytd-menu-renderer')[0].style = "display: none;"; } catch (e) {};
 		}
 	}, 950);
 });
 
 
 function get_url(quality) {
-	var str = document.getElementById("player").getElementsByTagName('script')[1].innerText;
-	var new1 = str.split(";ytplayer.load");
-	var new2 = new1[0].replace(/ytplayer/g, 'vtplayer');
 	try {
-		eval(new2);
-		console.log(vtplayer);
-	} catch (e) {
+		var str = document.getElementById("player").getElementsByTagName('script')[1].innerText;
+		var new1 = str.split(";ytplayer.load");
+		var new2 = new1[0].replace(/ytplayer/g, 'vtplayer');
+		try {
+			eval(new2);
+			console.log(vtplayer);
+		} catch (e) {
+			console.log(e);
+		}
+		// ES6 version
+		const videoUrls = vtplayer.config.args.adaptive_fmts
+			.split(',')
+			.map(item => item
+				.split('&')
+				.reduce((prev, curr) => (curr = curr.split('='),
+					Object.assign(prev, {
+						[curr[0]]: decodeURIComponent(curr[1])
+					})
+				), {})
+			)
+			.reduce((prev, curr) => Object.assign(prev, {
+				[curr.quality_label || curr.type]: curr
+			}), {});
+		var url = videoUrls[quality]["url"];
+		var audioType = Object.keys(videoUrls)[Object.keys(videoUrls).length - 1];
+		var audio = videoUrls[audioType]["url"];
+		console.log([url, videoUrls[quality]["type"], audio, audioType])
+		return [url, videoUrls[quality]["type"], audio, audioType];
+	} catch(e) {
 		console.log(e);
+		console.log("Error getting URL, who cares.");
+		return false;
 	}
-	// ES6 version
-	const videoUrls = vtplayer.config.args.adaptive_fmts
-		.split(',')
-		.map(item => item
-			.split('&')
-			.reduce((prev, curr) => (curr = curr.split('='),
-				Object.assign(prev, {
-					[curr[0]]: decodeURIComponent(curr[1])
-				})
-			), {})
-		)
-		.reduce((prev, curr) => Object.assign(prev, {
-			[curr.quality_label || curr.type]: curr
-		}), {});
-	var url = videoUrls[quality]["url"];
-	var audioType = Object.keys(videoUrls)[Object.keys(videoUrls).length - 1];
-	var audio = videoUrls[audioType]["url"];
-	console.log([url, videoUrls[quality]["type"], audio, audioType])
-	return [url, videoUrls[quality]["type"], audio, audioType];
 }
